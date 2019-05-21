@@ -1,8 +1,12 @@
 ﻿# SWGOHBot
 
-Bot Framework v4 echo bot sample.
+This will become a bot that allows the user to query the [SWGOH.gg](https://SWGOH.gg) database
 
-This bot has been created using [Bot Framework](https://dev.botframework.com), it shows how to create a simple bot that accepts input from the user and echoes it back.
+![Alt text](/SwgohBot_Screen1.png?raw=true "Screenshot 1")
+
+![Alt text](/SwgohBot_Screen2.png?raw=true "Screenshot 2")
+
+This bot has been created using [Bot Framework](https://dev.botframework.com)
 
 ## Prerequisites
 
