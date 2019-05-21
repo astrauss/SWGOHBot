@@ -6,6 +6,12 @@ This will become a bot that allows the user to query the [SWGOH.gg](https://SWGO
 
 ![Alt text](/SwgohBot_Screen2.png?raw=true "Screenshot 2")
 
+Currently implemented are:
+
+- list all
+- list <side> (light/dark)
+- show <char>
+
 This bot has been created using [Bot Framework](https://dev.botframework.com)
 
 ## Prerequisites
