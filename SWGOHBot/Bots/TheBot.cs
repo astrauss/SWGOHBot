@@ -28,7 +28,7 @@ namespace SWGOHBot.Bots
             else
             {
                 await GetSwgohReponse(turnContext, cancellationToken, character);
-                await turnContext.SendActivityAsync(MessageFactory.Text($"{reply.ToString()}"), cancellationToken);
+                //await turnContext.SendActivityAsync(MessageFactory.Text($"{reply.ToString()}"), cancellationToken);
 
             }
         }
@@ -47,17 +47,23 @@ namespace SWGOHBot.Bots
         private static async Task GetSwgohReponse(ITurnContext turnContext, CancellationToken cancellationToken, string command)
         {
             List<SwgohChar> charlist;
-            using (HttpClient client = new HttpClient())
+            try
             {
-                client.BaseAddress = new Uri("https://swgoh.gg");
-                client.DefaultRequestHeaders.Add("User-Agent", "Anything");
-                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-                HttpResponseMessage response = await client.GetAsync("/api/characters/");
-                response.EnsureSuccessStatusCode();
-                charlist = response.Content.ReadAsAsync<List<SwgohChar>>().Result;
-                string responseBody = await response.Content.ReadAsStringAsync();
+                using (HttpClient client = new HttpClient())
+                {
+                    client.BaseAddress = new Uri("https://swgoh.gg");
+                    client.DefaultRequestHeaders.Add("User-Agent", "Anything");
+                    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                    HttpResponseMessage response = await client.GetAsync("/api/characters/");
+                    response.EnsureSuccessStatusCode();
+                    charlist = response.Content.ReadAsAsync<List<SwgohChar>>().Result;
+                    string responseBody = await response.Content.ReadAsStringAsync();
+                }
+            } catch (Exception ex)
+            {
+                await turnContext.SendActivityAsync(MessageFactory.Text($"Error: " + ex.Message ), cancellationToken);
+                return;
             }
-
 
             List<SwgohChar> requestedchars = new List<SwgohChar>();
 
@@ -79,9 +85,6 @@ namespace SWGOHBot.Bots
             {
                 string charname = command.Substring(5);
                 SwgohChar t1 = charlist.FirstOrDefault(c => c.Name.ToLowerInvariant() == charname);
-                //SwgohChar t2 = charlist.Find(c => c.Name.ToLowerInvariant() == charname);
-
-
                 if (t1 == null)
                 {
 
@@ -92,7 +95,7 @@ namespace SWGOHBot.Bots
                         t1 = new SwgohChar
                         {
                             Name = "Character not found!",
-                            Image = "//localhost:3978/Images/not_found_128x128.png",
+                            Image = "//swgohbot.azurewebsites.net/Images/not_found_128x128.png",
                             Alignment = "Please try again",
                             Description = "type 'help' for Help",
                             Base_Id = "NOTFOUND",
@@ -116,9 +119,9 @@ namespace SWGOHBot.Bots
                 } else
                 {
                     ThumbnailCard cardT = GetThumbnailCard(t1);
-                    BasicCard cardB = GetBasicCard(t1);
-                    HeroCard cardH = GetHeroCard(t1);
-                    ReceiptCard card = GetReceiptCard(t1);
+                    //BasicCard cardB = GetBasicCard(t1);
+                    //HeroCard cardH = GetHeroCard(t1);
+                    //ReceiptCard card = GetReceiptCard(t1);
                     var reply = turnContext.Activity.CreateReply();
 
                     reply.Attachments = new List<Attachment>
@@ -129,6 +132,9 @@ namespace SWGOHBot.Bots
                     requestedchars.Add(t1);
                 }
 
+            } else
+            {
+                await turnContext.SendActivityAsync(MessageFactory.Text($"Unknown Command, try again"), cancellationToken);
             }
         }
 
