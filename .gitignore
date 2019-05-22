@@ -6,6 +6,8 @@
 *.user
 *.userosscache
 *.sln.docstates
+AppID_PW.txt
+SWGOHBot.zip
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
