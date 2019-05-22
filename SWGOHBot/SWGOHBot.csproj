@@ -16,4 +16,12 @@
     </Content>
   </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="wwwroot\Images\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Include="wwwroot\Images\not_found_128x128.png" />
+    </ItemGroup>
+
 </Project>

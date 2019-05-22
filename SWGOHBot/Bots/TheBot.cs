@@ -10,6 +10,7 @@ using Microsoft.Bot.Schema;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using SWGOHBot.Model;
+using Microsoft.AspNetCore.Http;
 
 namespace SWGOHBot.Bots
 {
@@ -23,13 +24,13 @@ namespace SWGOHBot.Bots
             if (character == "help")
             {
                 await SendSuggestedActionsAsync(turnContext, cancellationToken);
-
-            } else
+            }
+            else
             {
-                reply = await GetSwgohReponse(turnContext, cancellationToken, character);
+                await GetSwgohReponse(turnContext, cancellationToken, character);
                 await turnContext.SendActivityAsync(MessageFactory.Text($"{reply.ToString()}"), cancellationToken);
 
-            } 
+            }
         }
 
         protected override async Task OnMembersAddedAsync(IList<ChannelAccount> membersAdded, ITurnContext<IConversationUpdateActivity> turnContext, CancellationToken cancellationToken)
@@ -43,7 +44,7 @@ namespace SWGOHBot.Bots
             }
         }
 
-        private static async Task<string> GetSwgohReponse(ITurnContext turnContext, CancellationToken cancellationToken, string command)
+        private static async Task GetSwgohReponse(ITurnContext turnContext, CancellationToken cancellationToken, string command)
         {
             List<SwgohChar> charlist;
             using (HttpClient client = new HttpClient())
@@ -63,10 +64,12 @@ namespace SWGOHBot.Bots
             if (command.StartsWith("list") && command.Contains("light"))
             {
                 requestedchars.AddRange(charlist.Where(c => c.Alignment == "Light Side"));
+                await SendSimpleList(turnContext, cancellationToken, requestedchars);
             }
             else if (command.StartsWith("list") && command.Contains("dark"))
             {
                 requestedchars.AddRange(charlist.Where(c => c.Alignment == "Dark Side"));
+                await SendSimpleList(turnContext, cancellationToken, requestedchars);
             }
             else if (command == "list" || (command.StartsWith("list") && command.Contains("all")))
             {
@@ -76,18 +79,40 @@ namespace SWGOHBot.Bots
             {
                 string charname = command.Substring(5);
                 SwgohChar t1 = charlist.FirstOrDefault(c => c.Name.ToLowerInvariant() == charname);
-                SwgohChar t2 = charlist.Find(c => c.Name.ToLowerInvariant() == charname);
-                
-                
+                //SwgohChar t2 = charlist.Find(c => c.Name.ToLowerInvariant() == charname);
+
+
                 if (t1 == null)
                 {
 
                     requestedchars = charlist.Where(c => c.Name.ToLowerInvariant().Contains(charname)).ToList();
-                    
+
                     if (requestedchars.Count == 0)
                     {
-                        requestedchars.Add(new SwgohChar { Name = "Character not found!" });
+                        t1 = new SwgohChar
+                        {
+                            Name = "Character not found!",
+                            Image = "//localhost:3978/Images/not_found_128x128.png",
+                            Alignment = "Please try again",
+                            Description = "type 'help' for Help",
+                            Base_Id = "NOTFOUND",
+                            PK = "999",
+                            Categories = new string[] { "Not Found" }
+                            
+                        };
                     }
+                }
+
+                if (requestedchars.Count > 1)
+                {
+                    var reply = turnContext.Activity.CreateReply();
+                    reply.AttachmentLayout = AttachmentLayoutTypes.Carousel;
+                    for(int i = 0; i < requestedchars.Count; i++)
+                    {
+                        ThumbnailCard tCard = GetThumbnailCard(requestedchars[i]);
+                        reply.Attachments.Add(tCard.ToAttachment());
+                    }
+                    await turnContext.SendActivityAsync(reply, cancellationToken);
                 } else
                 {
                     ThumbnailCard cardT = GetThumbnailCard(t1);
@@ -95,7 +120,7 @@ namespace SWGOHBot.Bots
                     HeroCard cardH = GetHeroCard(t1);
                     ReceiptCard card = GetReceiptCard(t1);
                     var reply = turnContext.Activity.CreateReply();
-                    
+
                     reply.Attachments = new List<Attachment>
                     {
                         cardT.ToAttachment()
@@ -103,22 +128,25 @@ namespace SWGOHBot.Bots
                     await turnContext.SendActivityAsync(reply, cancellationToken);
                     requestedchars.Add(t1);
                 }
-                
+
             }
-            return GetResponseString(requestedchars);
         }
 
-        private static string GetResponseString(List<SwgohChar> resultList) {
+        private static async Task SendSimpleList(ITurnContext turnContext, CancellationToken cancellationToken, List<SwgohChar> requestedchars)
+        {
+            await turnContext.SendActivityAsync(MessageFactory.Text(GetResponseString(requestedchars)), cancellationToken);
+        }
+
+        private static string GetResponseString(List<SwgohChar> resultList)
+        {
             int size = resultList.Count;
             StringBuilder responseString = new StringBuilder();
             for (int i = 0; i < size; i++)
             {
                 responseString.Append("Name: " + resultList[i].Name);
                 responseString.AppendLine();
-                
                 responseString.Append("Description: " + resultList[i].Description);
                 responseString.AppendLine();
-                
                 responseString.Append("Light or Dark: " + resultList[i].Alignment);
                 responseString.AppendLine();
                 responseString.AppendLine();
@@ -129,16 +157,23 @@ namespace SWGOHBot.Bots
 
         private static async Task SendSuggestedActionsAsync(ITurnContext turnContext, CancellationToken cancellationToken)
         {
-            var reply = turnContext.Activity.CreateReply("Example commands?");
-            reply.SuggestedActions = new SuggestedActions()
+            var reply = turnContext.Activity.CreateReply();
+            ThumbnailCard suggestionCardT = new ThumbnailCard()
             {
-                Actions = new List<CardAction>()
+                Title = "SWGOH Bot Help",
+                Subtitle = "Valid commands are:",
+                Buttons = new List<CardAction>()
                 {
                     new CardAction() { Title = "List Light", Type = ActionTypes.ImBack, Value = "list light" },
                     new CardAction() { Title = "List Dark", Type = ActionTypes.ImBack, Value = "list dark" },
                     new CardAction() { Title = "Show Darth Revan", Type = ActionTypes.ImBack, Value = "show darth revan" },
                 },
             };
+            reply.Attachments = new List<Attachment>
+            {
+                suggestionCardT.ToAttachment()
+            };
+
             await turnContext.SendActivityAsync(reply, cancellationToken);
         }
 
@@ -166,7 +201,7 @@ namespace SWGOHBot.Bots
                 Subtitle = theChar.Alignment,
                 Images = new List<CardImage>
                 {
-                    new CardImage(url: "https:" + theChar.Image, alt: theChar.Base_Id)
+                    new CardImage(url: "http:" + theChar.Image, alt: theChar.Base_Id)
                 },
                 Text = theChar.Description + "\n\n" + "**_" + theChar.Categories[0] + "_**"
             };
@@ -198,10 +233,10 @@ namespace SWGOHBot.Bots
                 Facts = new List<Fact> { new Fact("Description", theChar.Description), new Fact("Alignment", theChar.Alignment) },
                 Items = new List<ReceiptItem>
                 {
-                    new ReceiptItem(                        
+                    new ReceiptItem(
                         image: new CardImage(url: "https:" + theChar.Image)),
                 },
-                
+
                 Buttons = new List<CardAction>
                 {
                     new CardAction(
