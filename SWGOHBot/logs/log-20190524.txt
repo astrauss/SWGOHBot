@@ -1,0 +1,2 @@
+2019-05-24 13:08:06.382 +02:00 [Information] Request starting HTTP/1.1 DEBUG http://localhost:3978/  0
+2019-05-24 13:08:07.519 +02:00 [Information] Request finished in 961.2597ms 200 

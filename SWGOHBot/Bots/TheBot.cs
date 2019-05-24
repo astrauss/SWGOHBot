@@ -11,6 +11,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using SWGOHBot.Model;
 using Microsoft.AspNetCore.Http;
+using Serilog;
 
 namespace SWGOHBot.Bots
 {
@@ -18,16 +19,37 @@ namespace SWGOHBot.Bots
     {
         protected override async Task OnMessageActivityAsync(ITurnContext<IMessageActivity> turnContext, CancellationToken cancellationToken)
         {
-            string character = turnContext.Activity.Text.ToLowerInvariant();
+            Mention[] m = turnContext.Activity.GetMentions();
+            var messageText = turnContext.Activity.Text;
+            Log.Verbose(string.Format("Orgininal Message: {0}", messageText));
+            for (int i = 0; i < m.Length; i++)
+            {
+                Log.Verbose(string.Format("Mention {0}: ID = {1}, Name = {2}, Role = {3}", i, m[i].Mentioned.Id, m[i].Mentioned.Name, m[i].Mentioned.Role));
+                if (m[i].Mentioned.Id == turnContext.Activity.Recipient.Id)
+                {
+                    //Bot is in the @mention list.
+                    //The below example will strip the bot name out of the message, so you can parse it as if it wasn't included. Note that the Text object will contain the full bot name, if applicable.
+                    if (m[i].Text != null)
+                    {
+                        messageText = messageText.Replace(m[i].Text, "");
+                        Log.Verbose(string.Format("Stripped Message: {0}", messageText));
+                    }
+                }
+            }
+            messageText = messageText.ToLowerInvariant().Trim();
+            
+            Log.Verbose(string.Format("Receiving Activitiy, Text: {0}", messageText));
             string reply = String.Empty;
 
-            if (character == "help")
+            if (messageText == "help")
             {
+                Log.Verbose(string.Format("Help = true"));
                 await SendSuggestedActionsAsync(turnContext, cancellationToken);
             }
             else
             {
-                await GetSwgohReponse(turnContext, cancellationToken, character);
+                Log.Verbose(string.Format("Help = false, entering GetSwgohResponse()"));
+                await GetSwgohReponse(turnContext, cancellationToken, messageText);
                 //await turnContext.SendActivityAsync(MessageFactory.Text($"{reply.ToString()}"), cancellationToken);
 
             }
@@ -39,13 +61,15 @@ namespace SWGOHBot.Bots
             {
                 if (member.Id != turnContext.Activity.Recipient.Id)
                 {
-                    await turnContext.SendActivityAsync(MessageFactory.Text($"I'll give info about the characters from Star Wars Galaxy of Heroes!"), cancellationToken);
+                    await turnContext.SendActivityAsync(MessageFactory.Text($"I'll give info about the characters from Star Wars Galaxy of Heroes! Try 'help' for help"), cancellationToken);
                 }
             }
         }
 
         private static async Task GetSwgohReponse(ITurnContext turnContext, CancellationToken cancellationToken, string command)
         {
+            Log.Verbose(string.Format("Inside GetSwgohResponse(), command text = {0}", command));
+            
             List<SwgohChar> charlist;
             try
             {
@@ -83,11 +107,19 @@ namespace SWGOHBot.Bots
             }
             else if (command.StartsWith("show"))
             {
+                Log.Verbose(string.Format("show = true, command text = {0}", command));
+                
                 string charname = command.Substring(5);
+                charname.Trim();
+                Log.Verbose(string.Format("show = true, stripped charname = {0}", charname));
+                bool result = charname.Equals("embo");
+                Log.Verbose(string.Format("String comparison = {0}", result));
+                result = charname.Equals("embo", StringComparison.Ordinal);
+                Log.Verbose(string.Format("String ordinal comparison = {0}", result));
                 SwgohChar t1 = charlist.FirstOrDefault(c => c.Name.ToLowerInvariant() == charname);
                 if (t1 == null)
                 {
-
+                    Log.Verbose(string.Format("show = true, charname returned nothing", charname));
                     requestedchars = charlist.Where(c => c.Name.ToLowerInvariant().Contains(charname)).ToList();
 
                     if (requestedchars.Count == 0)
@@ -108,6 +140,7 @@ namespace SWGOHBot.Bots
 
                 if (requestedchars.Count > 1)
                 {
+                    Log.Verbose(string.Format("Query for {0} returned more than one result", charname));
                     var reply = turnContext.Activity.CreateReply();
                     reply.AttachmentLayout = AttachmentLayoutTypes.Carousel;
                     for(int i = 0; i < requestedchars.Count; i++)
